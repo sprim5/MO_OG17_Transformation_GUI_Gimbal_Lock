@@ -93,7 +93,22 @@ function project
     );
 
     Window.Figure.Visible = 'on';
-
+    
+    
+    scale = 5;
+    x = [0,1,1,0,0,...  %bl
+        2,2,1,1,2,...
+        2,1,1,2,2,...
+        0,0,1,1,0];
+    y = [0,0,1,1,0,...  %bl
+        0,1,1,0,0,...
+        2,2,1,1,2,...
+        2,1,1,2,2];
+    
+    hold on;
+        plotBase(x,y, scale);
+    hold off;
+    
     function onEvent(ObjectHandle, ActionData)
         %ObjectHandle.String(ObjectHandle.Value) = [];
         ObjectHandle.Value = max(min(ObjectHandle.Value, length(ObjectHandle.String)), 1);
