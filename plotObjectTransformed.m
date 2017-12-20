@@ -9,6 +9,29 @@ function plotObjectTransformed(Object, TransformationStack)
                     ; 0, 0, 1, 0 ...
                     ; 0, 0, 0, 1 ...
                 ];
+            case 'rotation'
+                CosX = cos(Transform.Rx);
+                SinX = sin(Transform.Rx);
+                CosY = cos(Transform.Ry);
+                SinY = sin(Transform.Ry);
+                CosZ = cos(Transform.Rz);
+                SinZ = sin(Transform.Rz);
+                Rx = [...
+                    1, 0, 0 ...
+                  ; 0, CosX, -SinX ...
+                  ; 0, SinX, CosX ...
+                ];
+                Ry = [...
+                    CosY, 0, SinY ...
+                  ; 0, 1, 0 ...
+                  ; -SinY, 0, CosY ...
+                ];
+                Rz = [...
+                    CosZ, -SinZ, 0 ...
+                  ; SinZ, CosZ, 0 ...
+                  ; 0, 0, 1 ...
+                ];
+                Matrix = [ Rx * Ry * Rz, zeros(3, 1); 0, 0, 0, 1 ];
             otherwise
                 Matrix = [...
                       1, 0, 0, 0 ...
@@ -24,23 +47,23 @@ function plotObjectTransformed(Object, TransformationStack)
             for I = 1:NumPairs
                 Idx = 1 + (I - 1) * 2;
                 Indices = Object.Indices(1, Idx:Idx + 1);
-                Vectors = [ Object.Vertices(:, Indices); ones(2, length(Indices)) ];
+                Vectors = [ Object.Vertices(:, Indices); ones(1, length(Indices)) ];
                 for I = 1:length(TransformationStack)
                     Vectors = getTransform(TransformationStack{I}) * Vectors;
                 end
-                Vectors = Vectors(1:2, :);
-                plot3(Vectors(1, :), zeros(length(Vectors), 1), Vectors(2, :), 'blue');
+                Vectors = Vectors(1:3, :);
+                plot3(Vectors(1, :), Vectors(3, :), Vectors(2, :), 'blue');
             end
         case 'TriangleStrip'
             NumTriangles = length(Object.Indices) - 2;
             for I = 1:NumTriangles
                 Indices = Object.Indices(1, I:I + 2);
-                Vectors = [ Object.Vertices(:, Indices); ones(2, length(Indices)) ];
+                Vectors = [ Object.Vertices(:, Indices); ones(1, length(Indices)) ];
                 for I = 1:length(TransformationStack)
                     Vectors = getTransform(TransformationStack{I}) * Vectors;
                 end
-                Vectors = Vectors(1:2, :);
-                Surface = fill3(Vectors(1, :), zeros(length(Vectors), 1), Vectors(2, :), 'red');
+                Vectors = Vectors(1:3, :);
+                Surface = fill3(Vectors(1, :), Vectors(3, :), Vectors(2, :), 'red');
                 set(Surface, 'EdgeColor', 'none');
             end
     end

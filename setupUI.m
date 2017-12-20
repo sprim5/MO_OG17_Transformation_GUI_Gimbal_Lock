@@ -156,7 +156,12 @@ function Window = setupUI(Settings)
                 To = length(Window.TransformationList.String);
         end
 
+        Temp = Window.Transformations{Window.SelectedIndex};
+        Window.Transformations{Window.SelectedIndex} = Window.Transformations{To};
+        Window.Transformations{To} = Temp;
+
         swap(Window.SelectedIndex, To);
+        onPlot;
 
         function swap(From, To)
             ListLength = length(Window.TransformationList.String);
@@ -178,11 +183,20 @@ function Window = setupUI(Settings)
     Value = 1;
     function addTransformation(Source, Event)
         LastIndex = length(Window.TransformationList.String);
-        Window.Transformations{LastIndex + 1} = struct(...
-              'Type', 'translation' ...
-            , 'X', (floor(rand() * 8) - 4) / 2  ...
-            , 'Y', (floor(rand() * 8) - 4) / 2 ...
-        );
+        if rand() < 0.5
+            Window.Transformations{LastIndex + 1} = struct(...
+                  'Type', 'translation' ...
+                , 'X', (floor(rand() * 8) - 4) / 2  ...
+                , 'Y', (floor(rand() * 8) - 4) / 2 ...
+            );
+        else
+            Window.Transformations{LastIndex + 1} = struct(...
+                'Type', 'rotation' ...
+              , 'Rx', pi * (floor(rand() * 16) - 8) / 4 ...
+              , 'Ry', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
+              , 'Rz', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
+            );
+        end
 
         Window.TransformationList.String(LastIndex + 1) = { getTransformationString(Window.Transformations{LastIndex + 1}) };
         Value = Value + 1;
@@ -200,13 +214,19 @@ function Window = setupUI(Settings)
 
     function onPlot()
         ObjectList = Objects;
-        Scale = 10;
+        Scale = 5;
         cla(Window.Axes);
         grid on;
+
         axis([ -Scale, Scale, -Scale, Scale, -Scale, Scale ]);
         set(Window.Axes, 'xtick', -1000:1000);
         set(Window.Axes, 'ytick', -1000:1000);
         set(Window.Axes, 'ztick', -1000:1000);
+        xlabel('Z');
+        ylabel('X');
+        zlabel('Y');
+        h = rotate3d;
+        h.Enable = 'on';
 
         hold on;
 
@@ -250,6 +270,8 @@ function Window = setupUI(Settings)
         switch(Transformation.Type)
             case 'translation'
                 Description = sprintf('Translation(%g, %g)', Transformation.X, Transformation.Y);
+            case 'rotation'
+                Description = sprintf('Rotation(%g\x03C0, %g\x03C0, %g\x03C0)', Transformation.Rx / pi, Transformation.Ry / pi, Transformation.Rz / pi);
             otherwise
                 Description = 'unknown transformation';
         end
@@ -360,6 +382,6 @@ function Window = setupUI(Settings)
 
         AxesSize = min(Window.PlotPanel.Position(3:4));
         VerticalLeft = Window.PlotPanel.Position(4) - AxesSize;
-        Window.Axes.Position = [ 40, 40 + VerticalLeft, [ AxesSize, AxesSize ] - 80 ];
+        Window.Axes.Position = [ 55, 55 + VerticalLeft, [ AxesSize, AxesSize ] - 110 ];
     end
 end

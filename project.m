@@ -5,6 +5,7 @@ function project
 
     Settings = defaultSettings();
     Window = setupUI(Settings);
+    set(Window.Axes, 'CameraPosition', [ 50, 50, 50 ]);
     Window.setVisible(true);
 
     %{
