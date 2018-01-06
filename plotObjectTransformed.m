@@ -1,5 +1,9 @@
 
 function plotObjectTransformed(Object, TransformationStack)
+    function Rad = toRad(Deg)
+        Rad = Deg * pi / 180.0;
+    end
+
     function Matrix = getTransform(Transform)
         switch(Transform.Type)
             case 'translation'
@@ -10,12 +14,12 @@ function plotObjectTransformed(Object, TransformationStack)
                     ; 0, 0, 0, 1 ...
                 ];
             case 'rotation'
-                CosX = cos(Transform.Rx);
-                SinX = sin(Transform.Rx);
-                CosY = cos(Transform.Ry);
-                SinY = sin(Transform.Ry);
-                CosZ = cos(Transform.Rz);
-                SinZ = sin(Transform.Rz);
+                CosX = cos(toRad(Transform.Rx));
+                SinX = sin(toRad(Transform.Rx));
+                CosY = cos(toRad(Transform.Ry));
+                SinY = sin(toRad(Transform.Ry));
+                CosZ = cos(toRad(Transform.Rz));
+                SinZ = sin(toRad(Transform.Rz));
                 Rx = [...
                     1, 0, 0 ...
                   ; 0, CosX, -SinX ...
