@@ -62,9 +62,10 @@ function Window = setupUI(Settings)
     );
 
     TransformationPanel = setupTransformationsPanel(ControlBox);
-    TransformationPanel.addTransformationAddedListener(@() disp('Transformation added'));
+    TransformationPanel.addTransformationAddedListener(@addTransformation);
     TransformationPanel.addTransformationRemovedListener(@() disp('Transformation removed'));
-    TransformationPanel.add
+    TransformationPanel.addTransformationSelectedListener(@(Idx) disp(['Transformation n°' Idx ' selected']));
+
 
 %{
     ListPanel = uix.BoxPanel(...
@@ -757,24 +758,25 @@ function Window = setupUI(Settings)
     end
 
     Value = 1;
+    Transformations = {};
     function addTransformation(Source, Event)
-        LastIndex = length(Window.TransformationList.String);
+        LastIndex = length(Transformations);
         if rand() < 0.5
-            Window.Transformations{LastIndex + 1} = struct(...
+            Transformations{LastIndex + 1} = struct(...
                   'Type', 'translation' ...
                 , 'X', (floor(rand() * 8) - 4) / 2  ...
                 , 'Y', (floor(rand() * 8) - 4) / 2 ...
                 , 'Z', (floor(rand() * 8) - 4) / 2 ...
             );
         else
-            Window.Transformations{LastIndex + 1} = struct(...
+            Transformations{LastIndex + 1} = struct(...
                 'Type', 'rotation' ...
               , 'Rx', pi * (floor(rand() * 16) - 8) / 4 ...
               , 'Ry', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
               , 'Rz', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
             );
         end
-
+%{
         Window.TransformationList.String(LastIndex + 1) = { getTransformationString(Window.Transformations{LastIndex + 1}) };
         Value = Value + 1;
         Window.SelectedIndex = LastIndex + 1;
@@ -787,6 +789,8 @@ function Window = setupUI(Settings)
         Window.TransformationRemoveButton.Enable = 'on';
 
         onPlot;
+%}
+        TransformationPanel.onUpdate(Transformations);
     end
 
     function onPlot()
@@ -907,8 +911,8 @@ function Window = setupUI(Settings)
         TransformationList = uicontrol(...
             'Parent', GridLayout ...
           , 'Style', 'listbox' ...
-          , 'String', {} ...
           , 'FontSize', 14 ...
+          , 'Callback', @(Source, Event) notify('selected') ...
         );
 
         % ==================================================
@@ -978,6 +982,16 @@ function Window = setupUI(Settings)
           , 'Heights', [ -1, 30 ] ...
         );
 
+        Panel.onUpdate = @onUpdate;
+        function onUpdate(Transformations)
+            TransformationList.String = {};
+            NumTransformations = length(Transformations);
+            for I = 1:NumTransformations
+                Transformation = Transformations{I};
+                TransformationList.String{I} = Transformation.Type;
+            end
+        end
+
         function addListener(Listener, Type)
             switch(Type)
                 case 'added'
@@ -995,6 +1009,13 @@ function Window = setupUI(Settings)
         end
 
         function notify(Type, varargin)
+            if nargin > 1
+                ArgCount = nargin;
+                Args = varargin;
+            else
+                ArgCount = 0;
+            end
+
             switch(Type)
                 case 'added'
                     Listeners = TransformationAddedListeners;
@@ -1002,13 +1023,15 @@ function Window = setupUI(Settings)
                     Listeners = TransformationRemovedListeners;
                 case 'selected'
                     Listeners = TransformationSelectedListeners;
+                    ArgCount = 1;
+                    Args = { TransformationList.Value };
             end
 
             NumListeners = length(Listeners);
             for I = 1:NumListeners
                 Listener = Listeners{I};
-                if nargin > 1
-                    Listener(varargin);
+                if ArgCount >= 1
+                    Listener(Args);
                 else
                     Listener();
                 end
