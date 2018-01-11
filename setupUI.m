@@ -1,5 +1,11 @@
 
 function Window = setupUI(Settings)
+    TransformationUpdatedListeners = {};
+    Window.addTransformationUpdatedListener = @(Listener) addListener(Listener, 'updated');
+
+    SelectedIndex = 1;
+    Transformations = {};
+
     ArrowSymbols = struct(...
         'Left', sprintf('\x2190') ...
       , 'Up', sprintf('\x2191') ...
@@ -11,29 +17,9 @@ function Window = setupUI(Settings)
       , 'Last', sprintf('\x21a0') ...
     );
 
-    function Settings = defaultSettings
-        Settings.Dimension = [ 1366, 768 ];
-        Settings.MinDimension = [ 500, 640 ];
-
-        Settings.Padding = struct(...
-            'Top',     0,...
-            'Bottom', 10,...
-            'Left',   10,...
-            'Right',  10 ...
-        );
-    end
-
-    % get the screen dimensions
-    ScreenSize = get(0, 'ScreenSize');
-
-    Settings = defaultSettings;
-    Settings.ScreenSize = ScreenSize(3:4);
-    % TODO: What about ScreenSize(1:2) ?
-    Window.Settings = Settings;
-
     Figure = figure(...
         'Visible', 'on' ...
-      , 'Position', [ (Settings.ScreenSize - Settings.Dimension) / 2, Settings.Dimension ] ...
+      , 'Position', [ (Settings.ScreenDimension - Settings.Dimension) / 2, Settings.Dimension ] ...
     );
 
     RootBox = uix.HBox(...
@@ -61,123 +47,657 @@ function Window = setupUI(Settings)
       , 'Padding', 0 ...
     );
 
-    TransformationPanel = setupTransformationsPanel(ControlBox);
+    TransformationPanel = setupTransformationsPanel(ControlBox, Window);
     TransformationPanel.addTransformationAddedListener(@addTransformation);
-    TransformationPanel.addTransformationRemovedListener(@() disp('Transformation removed'));
-    TransformationPanel.addTransformationSelectedListener(@(Idx) disp(['Transformation n°' Idx ' selected']));
+    TransformationPanel.addTransformationRemovedListener(@removeTransformation);
+    TransformationPanel.addTransformationSelectedListener(@updateIndex);
+    TransformationPanel.addTransformationSwitchedListener(@(Args) listSwap(Args{1}));
 
+    ControlPanel = setupControlPanel(ControlBox, Window);
+
+    set(ControlBox, 'Heights', [ -1, 300 ]);
+    set(RootBox, 'Widths', [ -1, 500 ]);
+
+
+    function changeTranslation(Sign, Value)
+        switch(Value)
+            case 'X'
+                x = str2double(Window.TranslationInputX.String);
+            case 'Y'
+                x = str2double(Window.TranslationInputY.String);
+            case 'Z'
+                x = str2double(Window.TranslationInputZ.String);
+        end
+        if (isempty(x))
+            x = 0;
+        end
+        
+        change = str2double(Window.TranslationInputChange.String);
+        
+        if (isempty(change))
+            change = 0;
+        end
+        
+        switch(Sign)
+            case '-'
+                x = x-change;
+            case '+'
+                x = x+change;
+        end
+        
+        switch(Value)
+            case 'X'
+                Window.TranslationInputX.String = x;
+            case 'Y'
+                Window.TranslationInputY.String = x;
+            case 'Z'
+                Window.TranslationInputZ.String = x;
+        end
+        setTranslation();
+        
+    end
+
+    function setTranslation()
+        
+        Length = length(Window.TransformationList.String);
+        if Length >= 1
+            Window.Transformations{Window.SelectedIndex}.X = str2double(Window.TranslationInputX.String);
+            Window.Transformations{Window.SelectedIndex}.Y = str2double(Window.TranslationInputY.String);
+            Window.Transformations{Window.SelectedIndex}.Z = str2double(Window.TranslationInputZ.String);
+            
+            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
+        end
+
+        onPlot;
+    end
+
+    function changeScaling(Sign, Value)
+        switch(Value)
+            case 'X'
+                x = str2double(Window.ScalingInputX.String);
+            case 'Y'
+                x = str2double(Window.ScalingInputY.String);
+            case 'Z'
+                x = str2double(Window.ScalingInputZ.String);
+        end
+        if (isempty(x))
+            x = 0;
+        end
+        
+        change = str2double(Window.ScalingInputChange.String);
+        
+        if (isempty(change))
+            change = 0;
+        end
+        
+        switch(Sign)
+            case '-'
+                x = x-change;
+            case '+'
+                x = x+change;
+        end
+        
+        switch(Value)
+            case 'X'
+                Window.ScalingInputX.String = x;
+            case 'Y'
+                Window.ScalingInputY.String = x;
+            case 'Z'
+                Window.ScalingInputZ.String = x;
+        end
+        setScaling();
+        
+    end
+
+    function setScaling()
+        
+        Length = length(Window.TransformationList.String);
+        if Length >= 1
+            Window.Transformations{Window.SelectedIndex}.X = str2double(Window.ScalingInputX.String);
+            Window.Transformations{Window.SelectedIndex}.Y = str2double(Window.ScalingInputY.String);
+            Window.Transformations{Window.SelectedIndex}.Z = str2double(Window.ScalingInputZ.String);
+            
+            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
+        end
+
+        onPlot;
+    end
+
+    function changeRotation(Sign, Value)
+        switch(Value)
+            case 'X'
+                x = str2double(Window.RotationInputX.String);
+            case 'Y'
+                x = str2double(Window.RotationInputY.String);
+            case 'Z'
+                x = str2double(Window.RotationInputZ.String);
+        end
+        if (isempty(x))
+            x = 0;
+        end
+        
+        change = str2double(Window.RotationInputChange.String);
+        
+        if (isempty(change))
+            change = 0;
+        end
+        
+        switch(Sign)
+            case '-'
+                x = x-change;
+            case '+'
+                x = x+change;
+        end
+        
+        switch(Value)
+            case 'X'
+                Window.RotationInputX.String = x;
+            case 'Y'
+                Window.RotationInputY.String = x;
+            case 'Z'
+                Window.RotationInputZ.String = x;
+        end
+        setRotation();
+        
+    end
+
+    function setRotation()
+        
+        Length = length(Window.TransformationList.String);
+        if Length >= 1
+            Window.Transformations{Window.SelectedIndex}.Rx = str2double(Window.RotationInputX.String);
+            Window.Transformations{Window.SelectedIndex}.Ry = str2double(Window.RotationInputY.String);
+            Window.Transformations{Window.SelectedIndex}.Rz = str2double(Window.RotationInputZ.String);
+            
+            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
+        end
+
+        onPlot;
+    end
 
 %{
-    ListPanel = uix.BoxPanel(...
-        'Parent', ControlBox ...
-      , 'Title', 'Transformations' ...
-      , 'TitleColor', [ 0.5, 0.6, 0.7 ] ...
-      , 'FontSize', 12 ...
-      , 'FontWeight', 'bold' ...
-      , 'Padding', 5 ...
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Mirroring
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    Window.MirroringTab = uitab(Window.TransformationTabs ...
+      , 'Title', 'Mirroring' ...
     );
 
-    TransformationsLayout = uix.VBox(...
-        'Parent', ListPanel ...
-      , 'Spacing', 5 ...
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Shearing
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    Window.ShearingTab = uitab(Window.TransformationTabs ...
+      , 'Title', 'Shearing' ...
     );
 
-    TransformationsControlLayout = uix.HBox(...
-        'Parent', TransformationsLayout ...
-      , 'Spacing', 5 ....
+    Window.TranslationPanel = uipanel(Window.ControlPanel ...
+      , 'BorderWidth', 0 ...
+      , 'BackgroundColor', [ 1, 0, 0 ] ...
     );
-
-    Window.TransformationList = uicontrol(...
-        'Parent', TransformationsControlLayout ...
-      , 'Style', 'listbox' ...
-      , 'String', {} ...
-      , 'FontSize', 14 ...
-      , 'Callback', @onSelect ...
-    );
-
-    TransformationsSwitchButtonLayout = uix.VBox(...
-        'Parent', TransformationsControlLayout ...
-      , 'Spacing', 5 ...
-    );
-
-    Window.TransformationsMoveTop = uicontrol(...
-        'Parent', TransformationsSwitchButtonLayout ...
-      , 'Style', 'pushbutton' ...
-      , 'String', ArrowSymbols.Top ...
-      , 'FontSize', 30 ...
-      , 'Callback', @(Source, Event) listSwap('first') ...
-      , 'Enable', 'off' ...
-    );
-    Window.TransformationsMovePrevious = uicontrol(...
-        'Parent', TransformationsSwitchButtonLayout ...
-      , 'Style', 'pushbutton' ...
-      , 'String', ArrowSymbols.Up ...
-      , 'FontSize', 30 ...
-      , 'Callback', @(Source, Event) listSwap('prev') ...
-      , 'Enable', 'off' ...
-    );
-    Window.TransformationsMoveNext = uicontrol(...
-        'Parent', TransformationsSwitchButtonLayout ...
-      , 'Style', 'pushbutton' ...
-      , 'String', ArrowSymbols.Down ...
-      , 'FontSize', 30 ...
-      , 'Callback', @(Source, Event) listSwap('next') ...
-      , 'Enable', 'off' ...
-    );
-
-    Window.TransformationsMoveBottom = uicontrol(...
-        'Parent', TransformationsSwitchButtonLayout ...
-      , 'Style', 'pushbutton' ...
-      , 'String', ArrowSymbols.Bottom ...
-      , 'FontSize', 30 ...
-      , 'Callback', @(Source, Event) listSwap('last') ...
-      , 'Enable', 'off' ...
-    );
-
-    set(TransformationsControlLayout, 'Widths', [ -1, 50 ]);
-
-    TransformationsAddButtonLayout = uix.HBox(...
-        'Parent', TransformationsLayout ...
-      , 'Spacing', 5 ...
-    );
-
-    TransformationAddbutton = uicontrol(...
-        'Parent', TransformationsAddButtonLayout ...
-      , 'Style', 'pushbutton' ...
-      , 'String', 'Add transformation' ...
-      , 'FontSize', 12 ...
-      , 'Callback', @addTransformation ...
-    );
-
-    Window.TransformationRemoveButton = uicontrol(...
-        'Parent', TransformationsAddButtonLayout ...
-      , 'Style', 'pushbutton' ...
-      , 'String', 'Remove transformation' ...
-      , 'FontSize', 12 ...
-      , 'Callback', @removeTransformation ...
-      , 'Enable', 'off' ...
-    );
-
-    set(TransformationsLayout, 'Heights', [ -1, 50 ]);
+    Window.TranslationPanel.Units = 'pixels';
+    Window.TranslationPanel.Visible = 'off';
 %}
 
-    ControlPanel = uix.BoxPanel(...
-        'Parent', ControlBox ...
-      , 'Title', 'Controls' ...
-      , 'TitleColor', [ 0.5, 0.6, 0.7 ] ...
-      , 'FontSize', 12 ...
-      , 'FontWeight', 'bold' ...
-      , 'Padding', 5 ...
-    );
+    Window.SelectListeners = {};
+    Window.Transformations = {};
 
-    TransformationTabs = uix.TabPanel(...
-        'Parent', ControlPanel ...
-      , 'FontSize', 12 ...
-      , 'Padding', 5 ...
-      , 'TabWidth', 100 ...
-      , 'SelectionChangedFcn', @setTransformation ...
-    );
+    function addListener(Listener, Type)
+        switch(Type)
+            case 'updated'
+                TransformationUpdatedListeners = appendListener(Listener, TransformationUpdatedListeners);
+        end
+    end
 
+    function Listeners = appendListener(Listener, Listeners)
+        NumListeners = length(Listeners);
+        Listeners{NumListeners + 1} = Listener;
+    end
+
+    function notify(Type, varargin)
+    if nargin > 1
+        ArgCount = nargin;
+        Args = varargin;
+    else
+        ArgCount = 0;
+    end
+
+    Listeners = [];
+    switch(Type)
+        case 'updated'
+            Listeners = TransformationUpdatedListeners;
+            ArgCount = 1;
+            Args = [ Transformations ];
+    end
+
+    NumListeners = length(Listeners);
+    for I = 1:NumListeners
+        Listener = Listeners{I};
+        if ArgCount >= 1
+            Listener(Args);
+        else
+            Listener();
+        end
+    end
+end
+	
+	function setTransformation(src, eventdata)
+        if(eventdata.OldValue == 0)
+            return;
+        end
+        Transformation = lower(src.TabTitles{eventdata.NewValue});
+        Length = length(Window.TransformationList.String);
+        if Length >= 1
+            switch(Transformation)
+                case 'translation'
+                    Window.Transformations{Window.SelectedIndex}.X = 0;
+                    Window.Transformations{Window.SelectedIndex}.Y = 0;
+                    Window.Transformations{Window.SelectedIndex}.Z = 0;
+                case 'scaling'
+                    Window.Transformations{Window.SelectedIndex}.X = 1;
+                    Window.Transformations{Window.SelectedIndex}.Y = 1;
+                    Window.Transformations{Window.SelectedIndex}.Z = 1;
+                case 'rotation'
+                    Window.Transformations{Window.SelectedIndex}.Rx = 0;
+                    Window.Transformations{Window.SelectedIndex}.Ry = 0;
+                    Window.Transformations{Window.SelectedIndex}.Rz = 0;
+            end
+            Window.Transformations{Window.SelectedIndex}.Type = Transformation;
+            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
+        end
+
+        onPlot;
+    end
+
+    function listSwap(Index)
+        NumTransformations = length(Transformations);
+        switch(Index)
+            case 'first'
+                To = 1;
+            case 'prev'
+                To = SelectedIndex - 1;
+            case 'next'
+                To = SelectedIndex + 1;
+            case 'last'
+                To = NumTransformations;
+        end
+        To = min(max(1, To), NumTransformations);
+
+        swap(SelectedIndex, To);
+
+        notify('updated', Transformations);
+        select(To);
+
+        function swap(From, To)
+            NumTransformations = length(Transformations);
+            if 1 <= From && From <= NumTransformations && 1 <= To && 1 <= NumTransformations && From ~= To
+                Iter = sign(To - From);
+                while abs(From - To) > 0
+                    Next = From + Iter;
+                    Tmp = Transformations{Next};
+                    Transformations{Next} = Transformations{From};
+                    Transformations{From} = Tmp;
+                    From = Next;
+                end
+
+                select(To);
+            end
+        end
+    end
+
+    Transformations = {};
+    function addTransformation(Source, Event)
+        LastIndex = length(Transformations);
+        if rand() < 0.5
+            Transformations{LastIndex + 1} = struct(...
+                  'Type', 'translation' ...
+                , 'X', (floor(rand() * 8) - 4) / 2  ...
+                , 'Y', (floor(rand() * 8) - 4) / 2 ...
+                , 'Z', (floor(rand() * 8) - 4) / 2 ...
+            );
+        else
+            Transformations{LastIndex + 1} = struct(...
+                'Type', 'rotation' ...
+              , 'Rx', pi * (floor(rand() * 16) - 8) / 4 ...
+              , 'Ry', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
+              , 'Rz', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
+            );
+        end
+%{
+        Window.TransformationList.String(LastIndex + 1) = { getTransformationString(Window.Transformations{LastIndex + 1}) };
+        Value = Value + 1;
+        Window.SelectedIndex = LastIndex + 1;
+        Window.TransformationList.Value = Window.SelectedIndex;
+
+        Window.TransformationsMoveTop.Enable = 'on';
+        Window.TransformationsMovePrevious.Enable = 'on';
+        Window.TransformationsMoveNext.Enable = 'on';
+        Window.TransformationsMoveBottom.Enable = 'on';
+        Window.TransformationRemoveButton.Enable = 'on';
+%}
+        onPlot;
+        notify('updated', Transformations);
+        select(LastIndex + 1);
+    end
+
+    onPlot;
+
+    function onPlot()
+        ObjectList = Objects;
+        Scale = 5;
+        cla(Window.Axes);
+        grid on;
+
+        axis([ -Scale, Scale, -Scale, Scale, -Scale, Scale ]);
+        set(Window.Axes, 'xtick', -1000:1000);
+        set(Window.Axes, 'ytick', -1000:1000);
+        set(Window.Axes, 'ztick', -1000:1000);
+        xlabel('Z');
+        ylabel('X');
+        zlabel('Y');
+        h = rotate3d;
+        h.Enable = 'on';
+
+        hold on;
+
+        % plot main axes
+        plot3([ -1000, 1000 ], [ 0, 0 ], [ 0, 0 ], 'r' ...
+           , [ 0, 0 ], [ -1000, 1000 ], [ 0, 0 ], 'b' ...
+           , [ 0, 0 ], [ 0, 0 ], [ -1000, 1000 ], 'g');
+
+        for I = 1:length(ObjectList)
+            plotObject(ObjectList(I));
+        end
+
+        for I = 1:length(ObjectList)
+            plotObjectTransformed(ObjectList(I), Window.Transformations);
+        end
+
+        hold off;
+    end
+
+    function removeTransformation()
+        NumTransformations = length(Transformations);
+        if ~(1 <= SelectedIndex && SelectedIndex <= NumTransformations)  % index is out of range
+            error('Index out of range in removeTransformation!');
+        end
+
+        Transformations(SelectedIndex) = [];
+        select(min(max(1, SelectedIndex), max(1, NumTransformations - 1)));
+        notify('updated', Transformations);
+
+        onPlot;
+    end
+
+    function select(Index)
+        SelectedIndex = Index;
+        TransformationPanel.select(SelectedIndex);
+    end
+
+    function updateIndex(Index)
+        SelectedIndex = Index;
+    end
+
+    function Description = getTransformationString(Transformation)
+        switch(Transformation.Type)
+            case 'translation'
+                Description = sprintf('Translation(%g, %g, %g)', Transformation.X, Transformation.Y, Transformation.Z);
+			case 'scaling'
+                Description = sprintf('Scaling(%g, %g, %g)', Transformation.X, Transformation.Y, Transformation.Z);
+            case 'rotation'
+                Description = sprintf('Rotation(%g°, %g°, %g°)', Transformation.Rx, Transformation.Ry, Transformation.Rz);
+                %Description = sprintf('Rotation(%g\x03C0, %g\x03C0, %g\x03C0)', Transformation.Rx / pi, Transformation.Ry / pi, Transformation.Rz / pi);
+            otherwise
+                Description = 'unknown transformation';
+        end
+    end
+
+    % ==================================================
+    % Setups the transformation panel
+    % The panel includes a list of transformations, buttons
+    % to change the order and buttons to add or remove transformations
+    % ==================================================
+    function Panel = setupTransformationsPanel(Parent, Application)
+        Application.addTransformationUpdatedListener(@onUpdate);
+
+        TransformationAddedListeners = {};
+        Panel.addTransformationAddedListener = @(Listener) addListener(Listener, 'added');
+        TransformationRemovedListeners = {};
+        Panel.addTransformationRemovedListener = @(Listener) addListener(Listener, 'removed');
+        TransformationSelectedListeners = {};
+        Panel.addTransformationSelectedListener = @(Listener) addListener(Listener, 'selected');
+        TransformationSwitchedListeners = {};
+        Panel.addTransformationSwitchedListener = @(Listener) addListener(Listener, 'switched');
+
+        Panel.select = @select;
+
+        RootPanel = uix.BoxPanel(...
+            'Parent', Parent ...
+          , 'Title', 'Transformations' ...
+          , 'TitleColor', [ 0.5, 0.6, 0.7 ] ...
+          , 'FontSize', 12 ...
+          , 'FontWeight', 'bold' ...
+          , 'Padding', 5 ...
+        );
+
+        GridLayout = uix.Grid(...
+            'Parent', RootPanel ...
+          , 'Spacing', 5 ...
+        );
+
+        % ==================================================
+        % Transformation list, 'listbox' with the added transformations
+        % ==================================================
+        TransformationList = uicontrol(...
+            'Parent', GridLayout ...
+          , 'Style', 'listbox' ...
+          , 'FontSize', 14 ...
+          , 'Callback', @(Source, Event) notify('selected') ...
+        );
+
+        % ==================================================
+        % Bottom Panel with 'Add' & 'Remove' buttons
+        % ==================================================
+        BottomPanel = uix.HBox(...
+            'Parent', GridLayout ...
+          , 'Spacing', 5 ...
+        );
+
+        uicontrol(...
+            'Parent', BottomPanel ...
+          , 'Style', 'pushbutton' ...
+          , 'String', 'Add Transformation' ...
+          , 'FontSize', 12 ...
+          , 'Callback', @(Source, Event) notify('added') ...
+        );
+
+        % buttons to be deactivated when no transformations exist
+        DeactivateButtons = [];
+        DeactivateButtons = [ DeactivateButtons, uicontrol(...
+            'Parent', BottomPanel ...
+          , 'Style', 'pushbutton' ...
+          , 'String', 'Remove Transformation' ...
+          , 'FontSize', 12 ...
+          , 'Callback', @(Source, Event) notify('removed') ...
+          , 'Enable', 'off' ...
+        )];
+
+        % ==================================================
+        % Side panel with buttons to switch the order of transformations
+        % ==================================================
+        SidePanel = uiextras.VBox(...
+            'Parent', GridLayout ...
+          , 'Spacing', 5 ...
+        );
+
+        DeactivateButtons = [ DeactivateButtons, uicontrol(...
+            'Parent', SidePanel ...
+          , 'Style', 'pushbutton' ...
+          , 'String', ArrowSymbols.Top ...
+          , 'FontSize', 30 ...
+          , 'Callback', @(Source, Event) notify('switched', 'first') ...
+          , 'Enable', 'off' ...
+        )];
+        DeactivateButtons = [ DeactivateButtons, uicontrol(...
+            'Parent', SidePanel ...
+          , 'Style', 'pushbutton' ...
+          , 'String', ArrowSymbols.Up ...
+          , 'FontSize', 30 ...
+          , 'Callback', @(Source, Event) notify('switched', 'prev') ...
+          , 'Enable', 'off' ...
+        )];
+        DeactivateButtons = [ DeactivateButtons, uicontrol(...
+            'Parent', SidePanel ...
+          , 'Style', 'pushbutton' ...
+          , 'String', ArrowSymbols.Down ...
+          , 'FontSize', 30 ...
+          , 'Callback', @(Source, Event) notify('switched', 'next') ...
+          , 'Enable', 'off' ...
+        )];
+        DeactivateButtons = [ DeactivateButtons, uicontrol(...
+            'Parent', SidePanel ...
+          , 'Style', 'pushbutton' ...
+          , 'String', ArrowSymbols.Bottom ...
+          , 'FontSize', 30 ...
+          , 'Callback', @(Source, Event) notify('switched', 'last') ...
+          , 'Enable', 'off' ...
+        )];
+
+        uix.Empty('Parent', GridLayout);
+
+        set(GridLayout ...
+          , 'Widths', [ -1, 50 ] ...
+          , 'Heights', [ -1, 30 ] ...
+        );
+
+        function select(Index)
+            TransformationList.Value = Index;
+            notify('selected');
+        end
+
+        function onUpdate(Transformations)
+            TransformationList.String = {};
+            NumTransformations = length(Transformations);
+            % keep selected index in a valid range (in case of deletion)
+            TransformationList.Value = min(max(TransformationList.Value, 1), NumTransformations);
+            for I = 1:NumTransformations
+                Transformation = Transformations{I};
+                TransformationList.String{I} = Transformation.Type;
+            end
+
+            % deactivate some buttons if there are no transformations
+            if NumTransformations == 0
+                Activate = 'off';
+            else
+                Activate = 'on';
+            end
+
+            NumButtons = length(DeactivateButtons);
+            for I = 1:NumButtons
+                set(DeactivateButtons(I), 'Enable', Activate);
+            end
+        end
+
+        function addListener(Listener, Type)
+            switch(Type)
+                case 'added'
+                    TransformationAddedListeners = appendListener(Listener, TransformationAddedListeners);
+                case 'removed'
+                    TransformationRemovedListeners = appendListener(Listener, TransformationRemovedListeners);
+                case 'selected'
+                    TransformationSelectedListeners = appendListener(Listener, TransformationSelectedListeners);
+                case 'switched'
+                    TransformationSwitchedListeners = appendListener(Listener, TransformationSwitchedListeners);
+            end
+        end
+
+        function Listeners = appendListener(Listener, Listeners)
+            NumListeners = length(Listeners);
+            Listeners{NumListeners + 1} = Listener;
+        end
+
+        function notify(Type, varargin)
+            if nargin > 1
+                ArgCount = nargin;
+                Args = varargin;
+            else
+                ArgCount = 0;
+            end
+
+            Listeners = [];
+            switch(Type)
+                case 'added'
+                    Listeners = TransformationAddedListeners;
+                case 'removed'
+                    if length(TransformationList.String) <= 0
+                        return;
+                    end
+
+                    Listeners = TransformationRemovedListeners;
+                case 'selected'
+                    if length(TransformationList.String) <= 0
+                        TransformationList.Value = 1;  % keep selected index valid
+                        return;
+                    end
+
+                    Listeners = TransformationSelectedListeners;
+                    ArgCount = 1;
+                    Args = [ TransformationList.Value ];
+                case 'switched'
+                    Listeners = TransformationSwitchedListeners;
+            end
+
+            NumListeners = length(Listeners);
+            for I = 1:NumListeners
+                Listener = Listeners{I};
+                if ArgCount >= 1
+                    Listener(Args);
+                else
+                    Listener();
+                end
+            end
+        end
+    end
+
+    % ==================================================
+    % Setups the control panel
+    % The panel includes control buttons to modify existing transformations
+    % such as translations, rotations and more
+    % ==================================================
+    function Panel = setupControlPanel(Parent, Application)
+        Panel = struct();
+
+        ControlPanel = uix.BoxPanel(...
+            'Parent', Parent ...
+          , 'Title', 'Controls' ...
+          , 'TitleColor', [ 0.5, 0.6, 0.7 ] ...
+          , 'FontSize', 12 ...
+          , 'FontWeight', 'bold' ...
+          , 'Padding', 5 ...
+        );
+
+        TransformationTabs = uix.TabPanel(...
+            'Parent', ControlPanel ...
+          , 'FontSize', 12 ...
+          , 'Padding', 5 ...
+          , 'TabWidth', 100 ...
+          , 'SelectionChangedFcn', @(Source, Event) notify('type') ...
+        );
+
+        % ==================================================
+        % Translation
+        % ==================================================
+        TranslationTab = uix.VBox(...
+            'Parent', TransformationTabs ...
+          , 'Spacing', 5 ...
+        );
+
+        Translation01 = uix.HButtonBox(...
+            'Parent', TranslationTab ...
+          , 'Spacing', 5 ...
+          , 'ButtonSize', [ 50, 50 ] ...
+        );
+
+%{
     TranslationTab = uix.VBox(...
         'Parent', TransformationTabs ...
       , 'Spacing', 5 ...
@@ -491,551 +1011,6 @@ function Window = setupUI(Settings)
     uix.Empty('Parent', Rotation4);
 
     TransformationTabs.TabTitles = { 'Translation', 'Scaling', 'Rotation' };
-
-    set(ControlBox, 'Heights', [ -1, 300 ]);
-    set(RootBox, 'Widths', [ -1, 500 ]);
-
-
-    function changeTranslation(Sign, Value)
-        switch(Value)
-            case 'X'
-                x = str2double(Window.TranslationInputX.String);
-            case 'Y'
-                x = str2double(Window.TranslationInputY.String);
-            case 'Z'
-                x = str2double(Window.TranslationInputZ.String);
-        end
-        if (isempty(x))
-            x = 0;
-        end
-        
-        change = str2double(Window.TranslationInputChange.String);
-        
-        if (isempty(change))
-            change = 0;
-        end
-        
-        switch(Sign)
-            case '-'
-                x = x-change;
-            case '+'
-                x = x+change;
-        end
-        
-        switch(Value)
-            case 'X'
-                Window.TranslationInputX.String = x;
-            case 'Y'
-                Window.TranslationInputY.String = x;
-            case 'Z'
-                Window.TranslationInputZ.String = x;
-        end
-        setTranslation();
-        
-    end
-
-    function setTranslation()
-        
-        Length = length(Window.TransformationList.String);
-        if Length >= 1
-            Window.Transformations{Window.SelectedIndex}.X = str2double(Window.TranslationInputX.String);
-            Window.Transformations{Window.SelectedIndex}.Y = str2double(Window.TranslationInputY.String);
-            Window.Transformations{Window.SelectedIndex}.Z = str2double(Window.TranslationInputZ.String);
-            
-            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
-        end
-
-        onPlot;
-    end
-
-    function changeScaling(Sign, Value)
-        switch(Value)
-            case 'X'
-                x = str2double(Window.ScalingInputX.String);
-            case 'Y'
-                x = str2double(Window.ScalingInputY.String);
-            case 'Z'
-                x = str2double(Window.ScalingInputZ.String);
-        end
-        if (isempty(x))
-            x = 0;
-        end
-        
-        change = str2double(Window.ScalingInputChange.String);
-        
-        if (isempty(change))
-            change = 0;
-        end
-        
-        switch(Sign)
-            case '-'
-                x = x-change;
-            case '+'
-                x = x+change;
-        end
-        
-        switch(Value)
-            case 'X'
-                Window.ScalingInputX.String = x;
-            case 'Y'
-                Window.ScalingInputY.String = x;
-            case 'Z'
-                Window.ScalingInputZ.String = x;
-        end
-        setScaling();
-        
-    end
-
-    function setScaling()
-        
-        Length = length(Window.TransformationList.String);
-        if Length >= 1
-            Window.Transformations{Window.SelectedIndex}.X = str2double(Window.ScalingInputX.String);
-            Window.Transformations{Window.SelectedIndex}.Y = str2double(Window.ScalingInputY.String);
-            Window.Transformations{Window.SelectedIndex}.Z = str2double(Window.ScalingInputZ.String);
-            
-            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
-        end
-
-        onPlot;
-    end
-
-    function changeRotation(Sign, Value)
-        switch(Value)
-            case 'X'
-                x = str2double(Window.RotationInputX.String);
-            case 'Y'
-                x = str2double(Window.RotationInputY.String);
-            case 'Z'
-                x = str2double(Window.RotationInputZ.String);
-        end
-        if (isempty(x))
-            x = 0;
-        end
-        
-        change = str2double(Window.RotationInputChange.String);
-        
-        if (isempty(change))
-            change = 0;
-        end
-        
-        switch(Sign)
-            case '-'
-                x = x-change;
-            case '+'
-                x = x+change;
-        end
-        
-        switch(Value)
-            case 'X'
-                Window.RotationInputX.String = x;
-            case 'Y'
-                Window.RotationInputY.String = x;
-            case 'Z'
-                Window.RotationInputZ.String = x;
-        end
-        setRotation();
-        
-    end
-
-    function setRotation()
-        
-        Length = length(Window.TransformationList.String);
-        if Length >= 1
-            Window.Transformations{Window.SelectedIndex}.Rx = str2double(Window.RotationInputX.String);
-            Window.Transformations{Window.SelectedIndex}.Ry = str2double(Window.RotationInputY.String);
-            Window.Transformations{Window.SelectedIndex}.Rz = str2double(Window.RotationInputZ.String);
-            
-            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
-        end
-
-        onPlot;
-    end
-
-%{
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Mirroring
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    Window.MirroringTab = uitab(Window.TransformationTabs ...
-      , 'Title', 'Mirroring' ...
-    );
-
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Shearing
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    Window.ShearingTab = uitab(Window.TransformationTabs ...
-      , 'Title', 'Shearing' ...
-    );
-
-    Window.TranslationPanel = uipanel(Window.ControlPanel ...
-      , 'BorderWidth', 0 ...
-      , 'BackgroundColor', [ 1, 0, 0 ] ...
-    );
-    Window.TranslationPanel.Units = 'pixels';
-    Window.TranslationPanel.Visible = 'off';
 %}
-
-    Window.SelectListeners = {};
-    Window.Transformations = {};
-
-
-    Window.setVisible = @setVisible;
-    Window.addSelectListener = @(Listener) addListener(Listener);
-
-    Window.addSelectListener(@onTransformationChange);
-
-    function onTransformationChange(Index)
-    end
-
-    function addListener(Listener)
-        NumListeners = length(Window.SelectListeners);
-        Window.SelectListeners{NumListeners + 1} = Listener;
-    end
-	
-	function setTransformation(src, eventdata)
-        if(eventdata.OldValue == 0)
-            return;
-        end
-        Transformation = lower(src.TabTitles{eventdata.NewValue});
-        Length = length(Window.TransformationList.String);
-        if Length >= 1
-            switch(Transformation)
-                case 'translation'
-                    Window.Transformations{Window.SelectedIndex}.X = 0;
-                    Window.Transformations{Window.SelectedIndex}.Y = 0;
-                    Window.Transformations{Window.SelectedIndex}.Z = 0;
-                case 'scaling'
-                    Window.Transformations{Window.SelectedIndex}.X = 1;
-                    Window.Transformations{Window.SelectedIndex}.Y = 1;
-                    Window.Transformations{Window.SelectedIndex}.Z = 1;
-                case 'rotation'
-                    Window.Transformations{Window.SelectedIndex}.Rx = 0;
-                    Window.Transformations{Window.SelectedIndex}.Ry = 0;
-                    Window.Transformations{Window.SelectedIndex}.Rz = 0;
-            end
-            Window.Transformations{Window.SelectedIndex}.Type = Transformation;
-            Window.TransformationList.String(Window.SelectedIndex) = { getTransformationString(Window.Transformations{Window.SelectedIndex})};
-        end
-
-        onPlot;
-    end
-
-    function listSwap(Index)
-        switch(Index)
-            case 'first'
-                To = 1;
-            case 'prev'
-                To = Window.SelectedIndex - 1;
-            case 'next'
-                To = Window.SelectedIndex + 1;
-            case 'last'
-                To = length(Window.TransformationList.String);
-        end
-        To = min(max(1, To), length(Window.TransformationList.String));
-
-        Temp = Window.Transformations{Window.SelectedIndex};
-        Window.Transformations{Window.SelectedIndex} = Window.Transformations{To};
-        Window.Transformations{To} = Temp;
-
-        swap(Window.SelectedIndex, To);
-        onPlot;
-
-        function swap(From, To)
-            ListLength = length(Window.TransformationList.String);
-            if 1 <= From && From <= ListLength && 1 <= To && To <= ListLength && From ~= To
-                Iter = sign(To - From);
-                while abs(From - To) > 0
-                    Next = From + Iter;
-                    Tmp = Window.TransformationList.String(Next);
-                    Window.TransformationList.String(Next) = Window.TransformationList.String(From);
-                    Window.TransformationList.String(From) = Tmp;
-                    From = Next;
-                end
-                Window.SelectedIndex = To;
-                Window.TransformationList.Value = Window.SelectedIndex;
-            end
-        end
-    end
-
-    Value = 1;
-    Transformations = {};
-    function addTransformation(Source, Event)
-        LastIndex = length(Transformations);
-        if rand() < 0.5
-            Transformations{LastIndex + 1} = struct(...
-                  'Type', 'translation' ...
-                , 'X', (floor(rand() * 8) - 4) / 2  ...
-                , 'Y', (floor(rand() * 8) - 4) / 2 ...
-                , 'Z', (floor(rand() * 8) - 4) / 2 ...
-            );
-        else
-            Transformations{LastIndex + 1} = struct(...
-                'Type', 'rotation' ...
-              , 'Rx', pi * (floor(rand() * 16) - 8) / 4 ...
-              , 'Ry', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
-              , 'Rz', 0 * pi * (floor(rand() * 16) - 8) / 4 ...
-            );
-        end
-%{
-        Window.TransformationList.String(LastIndex + 1) = { getTransformationString(Window.Transformations{LastIndex + 1}) };
-        Value = Value + 1;
-        Window.SelectedIndex = LastIndex + 1;
-        Window.TransformationList.Value = Window.SelectedIndex;
-
-        Window.TransformationsMoveTop.Enable = 'on';
-        Window.TransformationsMovePrevious.Enable = 'on';
-        Window.TransformationsMoveNext.Enable = 'on';
-        Window.TransformationsMoveBottom.Enable = 'on';
-        Window.TransformationRemoveButton.Enable = 'on';
-
-        onPlot;
-%}
-        TransformationPanel.onUpdate(Transformations);
-    end
-
-    function onPlot()
-        ObjectList = Objects;
-        Scale = 5;
-        cla(Window.Axes);
-        grid on;
-
-        axis([ -Scale, Scale, -Scale, Scale, -Scale, Scale ]);
-        set(Window.Axes, 'xtick', -1000:1000);
-        set(Window.Axes, 'ytick', -1000:1000);
-        set(Window.Axes, 'ztick', -1000:1000);
-        xlabel('Z');
-        ylabel('X');
-        zlabel('Y');
-        h = rotate3d;
-        h.Enable = 'on';
-
-        hold on;
-
-        % plot main axes
-        plot3([ -1000, 1000 ], [ 0, 0 ], [ 0, 0 ], 'r' ...
-           , [ 0, 0 ], [ -1000, 1000 ], [ 0, 0 ], 'b' ...
-           , [ 0, 0 ], [ 0, 0 ], [ -1000, 1000 ], 'g');
-
-        for I = 1:length(ObjectList)
-            plotObject(ObjectList(I));
-        end
-
-        for I = 1:length(ObjectList)
-            plotObjectTransformed(ObjectList(I), Window.Transformations);
-        end
-
-        hold off;
-    end
-
-    function removeTransformation(Source, Event)
-        Length = length(Window.TransformationList.String);
-        if Length >= 1
-            Window.Transformations(Window.SelectedIndex) = [];
-            Window.TransformationList.String(Window.SelectedIndex) = [];
-            Window.SelectedIndex = min(max(0, Window.SelectedIndex), Length - 1);
-            Window.TransformationList.Value = Window.SelectedIndex;
-
-            if Length == 1
-                Window.TransformationsMoveTop.Enable = 'off';
-                Window.TransformationsMovePrevious.Enable = 'off';
-                Window.TransformationsMoveNext.Enable = 'off';
-                Window.TransformationsMoveBottom.Enable = 'off';
-                Window.TransformationRemoveButton.Enable = 'off';
-            end
-        end
-
-        onPlot;
-    end
-
-    function Description = getTransformationString(Transformation)
-        switch(Transformation.Type)
-            case 'translation'
-                Description = sprintf('Translation(%g, %g, %g)', Transformation.X, Transformation.Y, Transformation.Z);
-			case 'scaling'
-                Description = sprintf('Scaling(%g, %g, %g)', Transformation.X, Transformation.Y, Transformation.Z);
-            case 'rotation'
-                Description = sprintf('Rotation(%g°, %g°, %g°)', Transformation.Rx, Transformation.Ry, Transformation.Rz);
-                %Description = sprintf('Rotation(%g\x03C0, %g\x03C0, %g\x03C0)', Transformation.Rx / pi, Transformation.Ry / pi, Transformation.Rz / pi);
-            otherwise
-                Description = 'unknown transformation';
-        end
-    end
-
-    function onSelect(Source, Event)
-        Window.SelectedIndex = Source.Value;
-        NumListeners = length(Window.SelectListeners);
-        for I = 1:NumListeners
-            Window.SelectListeners{I}(Window.SelectedIndex);
-        end
-    end
-
-    function setVisible(Visible)
-        if Visible
-            onPlot;
-            Window.Figure.Visible = 'on';
-        else
-            Window.Figure.Visible = 'off';
-        end
-    end
-
-    % ==================================================
-    % Setups the transformation panel
-    % The panel includes a list of transformations, buttons
-    % to change the order and buttons to add or remove transformations
-    % ==================================================
-    function Panel = setupTransformationsPanel(Parent)
-        TransformationAddedListeners = {};
-        Panel.addTransformationAddedListener = @(Listener) addListener(Listener, 'added');
-        TransformationRemovedListeners = {};
-        Panel.addTransformationRemovedListener = @(Listener) addListener(Listener, 'removed');
-        TransformationSelectedListeners = {};
-        Panel.addTransformationSelectedListener = @(Listener) addListener(Listener, 'selected');
-
-        RootPanel = uix.BoxPanel(...
-            'Parent', Parent ...
-          , 'Title', 'Transformations' ...
-          , 'TitleColor', [ 0.5, 0.6, 0.7 ] ...
-          , 'FontSize', 12 ...
-          , 'FontWeight', 'bold' ...
-          , 'Padding', 5 ...
-        );
-
-        GridLayout = uix.Grid(...
-            'Parent', RootPanel ...
-          , 'Spacing', 5 ...
-        );
-
-        % ==================================================
-        % Transformation list, 'listbox' with the added transformations
-        % ==================================================
-        TransformationList = uicontrol(...
-            'Parent', GridLayout ...
-          , 'Style', 'listbox' ...
-          , 'FontSize', 14 ...
-          , 'Callback', @(Source, Event) notify('selected') ...
-        );
-
-        % ==================================================
-        % Bottom Panel with 'Add' & 'Remove' buttons
-        % ==================================================
-        BottomPanel = uix.HBox(...
-            'Parent', GridLayout ...
-          , 'Spacing', 5 ...
-        );
-
-        uicontrol(...
-            'Parent', BottomPanel ...
-          , 'Style', 'pushbutton' ...
-          , 'String', 'Add Transformation' ...
-          , 'FontSize', 12 ...
-          , 'Callback', @(Source, Event) notify('added') ...
-        );
-        uicontrol(...
-            'Parent', BottomPanel ...
-          , 'Style', 'pushbutton' ...
-          , 'String', 'Remove Transformation' ...
-          , 'FontSize', 12 ...
-          , 'Callback', @(Source, Event) notify('removed') ...
-        );
-
-        % ==================================================
-        % Side panel with buttons to switch the order of transformations
-        % ==================================================
-        SidePanel = uix.VBox(...
-            'Parent', GridLayout ...
-          , 'Spacing', 5 ...
-        );
-
-        uicontrol(...
-            'Parent', SidePanel ...
-          , 'Style', 'pushbutton' ...
-          , 'String', ArrowSymbols.Top ...
-          , 'FontSize', 30 ...
-          , 'Callback', @(Source, Event) listSwap('first') ...
-        );
-        uicontrol(...
-            'Parent', SidePanel ...
-          , 'Style', 'pushbutton' ...
-          , 'String', ArrowSymbols.Up ...
-          , 'FontSize', 30 ...
-          , 'Callback', @(Source, Event) listSwap('prev') ...
-        );
-        uicontrol(...
-            'Parent', SidePanel ...
-          , 'Style', 'pushbutton' ...
-          , 'String', ArrowSymbols.Down ...
-          , 'FontSize', 30 ...
-          , 'Callback', @(Source, Event) listSwap('next') ...
-        );
-        uicontrol(...
-            'Parent', SidePanel ...
-          , 'Style', 'pushbutton' ...
-          , 'String', ArrowSymbols.Bottom ...
-          , 'FontSize', 30 ...
-          , 'Callback', @(Source, Event) listSwap('last') ...
-        );
-
-        uix.Empty('Parent', GridLayout);
-
-        set(GridLayout ...
-          , 'Widths', [ -1, 50 ] ...
-          , 'Heights', [ -1, 30 ] ...
-        );
-
-        Panel.onUpdate = @onUpdate;
-        function onUpdate(Transformations)
-            TransformationList.String = {};
-            NumTransformations = length(Transformations);
-            for I = 1:NumTransformations
-                Transformation = Transformations{I};
-                TransformationList.String{I} = Transformation.Type;
-            end
-        end
-
-        function addListener(Listener, Type)
-            switch(Type)
-                case 'added'
-                    TransformationAddedListeners = appendListener(Listener, TransformationAddedListeners);
-                case 'removed'
-                    TransformationRemovedListeners = appendListener(Listener, TransformationRemovedListeners);
-                case 'selected'
-                    TransformationSelectedListeners = appendListener(Listener, TransformationSelectedListeners);
-            end
-        end
-
-        function Listeners = appendListener(Listener, Listeners)
-            NumListeners = length(Listeners);
-            Listeners{NumListeners + 1} = Listener;
-        end
-
-        function notify(Type, varargin)
-            if nargin > 1
-                ArgCount = nargin;
-                Args = varargin;
-            else
-                ArgCount = 0;
-            end
-
-            switch(Type)
-                case 'added'
-                    Listeners = TransformationAddedListeners;
-                case 'removed'
-                    Listeners = TransformationRemovedListeners;
-                case 'selected'
-                    Listeners = TransformationSelectedListeners;
-                    ArgCount = 1;
-                    Args = { TransformationList.Value };
-            end
-
-            NumListeners = length(Listeners);
-            for I = 1:NumListeners
-                Listener = Listeners{I};
-                if ArgCount >= 1
-                    Listener(Args);
-                else
-                    Listener();
-                end
-            end
-        end
     end
 end
