@@ -8,6 +8,26 @@ function Window = setupUI(Settings)
     Figure = figure(...
         'Visible', 'on' ...
       , 'Position', [ (Settings.ScreenDimension - Settings.Dimension) / 2, Settings.Dimension ] ...
+      , 'MenuBar', 'none' ...
+      , 'ToolBar', 'none' ...
+      , 'GraphicsSmoothing', 'on' ...
+    );
+
+    Menu = uimenu(...
+        'Parent', Figure ...
+      , 'Text', 'File' ...
+    );
+
+    uimenu(...
+        'Parent', Menu ...
+      , 'Text', 'Save transformations' ...
+      , 'Callback', @(Source, Event) save ...
+    );
+
+    uimenu(...
+        'Parent', Menu ...
+      , 'Text', 'Load transformations...' ...
+      , 'Callback', @(Source, Event) load ...
     );
 
     RootBox = uix.HBox(...
@@ -49,6 +69,41 @@ function Window = setupUI(Settings)
 
     plot;
 
+
+    function save
+        [ FileName, PathName ] = uiputfile({'*.json', 'JavaScript Object Notation (*.json)'});
+
+        JSONString = jsonencode(Transformations);
+
+        File = sprintf('%s\\%s', PathName, FileName);
+        FileId = fopen(File, 'w+');
+        fprintf(FileId, JSONString);
+        fclose(FileId);
+    end
+
+    function load
+        [ FileName, PathName, FilterIndex ] = uigetfile({'*.json', 'JavaScript Object Notation (*.json)'});
+        disp(FileName);
+        disp(PathName);
+        disp(FilterIndex);
+
+        File = sprintf('%s\\%s', PathName, FileName);
+        fprintf('Loading file "%s"\n', File);
+
+        FileId = fopen(File);
+        Raw = fread(FileId, inf);
+        String = char(Raw);
+        TransformationsArray = jsondecode(String);
+        NumTransformations = length(TransformationsArray);
+        Transformations = {};
+        for Idx = 1:NumTransformations
+            Transformations{Idx} = TransformationsArray
+        end
+        fclose(FileId);
+
+        notify('updated');
+        plot;
+    end
 
     function onUpdate(Args)
         Transformations{SelectedIndex} = Args{1};
