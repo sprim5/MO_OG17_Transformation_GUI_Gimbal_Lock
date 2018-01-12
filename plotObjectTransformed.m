@@ -22,7 +22,6 @@ function plotObjectTransformed(Object, TransformationStack)
                 SinZ = sin(toRad(Transform.Rz));
                 Rx = [...
                     1, 0, 0, 0 ...
-
                   ; 0, CosX, -SinX, 0 ...
                   ; 0, SinX, CosX, 0 ...
                   ; 0, 0, 0, 1 ...
@@ -33,18 +32,14 @@ function plotObjectTransformed(Object, TransformationStack)
                   ; 0, 1, 0, 0 ...
                   ; -SinY, 0, CosY, 0 ...
                   ; 0, 0, 0, 1 ...
-
-
                 ];
                 Rz = [...
                     CosZ, -SinZ, 0, 0 ...
                   ; SinZ, CosZ, 0, 0 ...
                   ; 0, 0, 1, 0 ...
                   ; 0, 0, 0, 1 ...
-
-
                 ];
-                Matrix = [ Rx * Ry * Rz ]
+                Matrix = (Rx * Ry * Rz);
 			case 'scaling'
                 Matrix = [...
                       Transform.X, 0, 0, 0 ...
@@ -106,8 +101,8 @@ function plotObjectTransformed(Object, TransformationStack)
                 Idx = 1 + (I - 1) * 2;
                 Indices = Object.Indices(1, Idx:Idx + 1);
                 Vectors = [ Object.Vertices(:, Indices); ones(1, length(Indices)) ];
-                for I = 1:length(TransformationStack)
-                    Vectors = getTransform(TransformationStack{I}) * Vectors;
+                for J = 1:length(TransformationStack)
+                    Vectors = getTransform(TransformationStack{J}) * Vectors;
                 end
                 Vectors = Vectors(1:3, :);
                 plot3(Vectors(1, :), Vectors(3, :), Vectors(2, :), 'blue');
@@ -117,8 +112,8 @@ function plotObjectTransformed(Object, TransformationStack)
             for I = 1:NumTriangles
                 Indices = Object.Indices(1, I:I + 2);
                 Vectors = [ Object.Vertices(:, Indices); ones(1, length(Indices)) ];
-                for I = 1:length(TransformationStack)
-                    Vectors = getTransform(TransformationStack{I}) * Vectors;
+                for J = 1:length(TransformationStack)
+                    Vectors = getTransform(TransformationStack{J}) * Vectors;
                 end
                 Vectors = Vectors(1:3, :);
                 Surface = fill3(Vectors(1, :), Vectors(3, :), Vectors(2, :), 'red');
