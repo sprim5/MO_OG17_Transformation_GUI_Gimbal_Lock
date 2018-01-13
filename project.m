@@ -1,6 +1,10 @@
 
 function project
-% PROJECT yet another project
+    % ==================================================
+    % This project offers a GUI for applying different transformations to
+    % an object interactively. The GUI allows for adding or removing
+    % transformations aswell as modifying them.
+    % ==================================================
     Settings = defaultSettings;
     Window = setupUI(Settings);
 

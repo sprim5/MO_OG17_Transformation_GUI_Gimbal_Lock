@@ -91,8 +91,7 @@ function Window = setupUI(Settings)
         fprintf('Loading file "%s"\n', File);
 
         FileId = fopen(File);
-        Raw = fread(FileId, inf);
-        String = char(Raw);
+        String = fread(FileId, inf, '*char');
         TransformationsArray = jsondecode(String);
         NumTransformations = length(TransformationsArray);
         Transformations = {};
@@ -240,11 +239,9 @@ function Window = setupUI(Settings)
         set(Window.Axes, 'xtick', -1000:1000);
         set(Window.Axes, 'ytick', -1000:1000);
         set(Window.Axes, 'ztick', -1000:1000);
-        xlabel('Z');
-        ylabel('X');
+        xlabel('X');
+        ylabel('Z');
         zlabel('Y');
-        h = rotate3d;
-        h.Enable = 'on';
 
         hold on;
 
