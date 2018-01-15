@@ -11,7 +11,7 @@ function project
     set(Window.Axes, 'CameraPosition', [ 50, 50, 50 ]);
 
     function Settings = defaultSettings
-        Settings.Dimension = [ 1366, 768 ];
+        Settings.Dimension = [ 1600, 900 ];
 
          ScreenSize = get(0, 'ScreenSize');
          Settings.ScreenDimension = ScreenSize(3:4);
