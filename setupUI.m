@@ -83,9 +83,6 @@ function Window = setupUI(Settings)
 
     function load
         [ FileName, PathName, FilterIndex ] = uigetfile({'*.json', 'JavaScript Object Notation (*.json)'});
-        disp(FileName);
-        disp(PathName);
-        disp(FilterIndex);
 
         File = sprintf('%s\\%s', PathName, FileName);
         fprintf('Loading file "%s"\n', File);
@@ -96,7 +93,7 @@ function Window = setupUI(Settings)
         NumTransformations = length(TransformationsArray);
         Transformations = {};
         for Idx = 1:NumTransformations
-            Transformations{Idx} = TransformationsArray
+            Transformations{Idx} = TransformationsArray(Idx);
         end
         fclose(FileId);
 
