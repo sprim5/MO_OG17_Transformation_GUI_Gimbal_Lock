@@ -71,9 +71,14 @@ function Window = setupUI(Settings)
 
 
     function save
+        % make sure we only save if we have something valid!
+        if length(Transformations) <= 0
+            return
+        end
+
         [ FileName, PathName ] = uiputfile({'*.json', 'JavaScript Object Notation (*.json)'});
 
-        JSONString = jsonencode(Transformations);
+        JSONString = jsonencode([ { "dummy" }, Transformations ]);
 
         File = sprintf('%s\\%s', PathName, FileName);
         FileId = fopen(File, 'w+');
@@ -92,8 +97,8 @@ function Window = setupUI(Settings)
         TransformationsArray = jsondecode(String);
         NumTransformations = length(TransformationsArray);
         Transformations = {};
-        for Idx = 1:NumTransformations
-            Transformations{Idx} = TransformationsArray(Idx);
+        for Idx = 2:NumTransformations
+            Transformations{Idx-1} = TransformationsArray{Idx};
         end
         fclose(FileId);
 
