@@ -1,8 +1,5 @@
 
 function plotObjectTransformed(Object, TransformationStack)
-    function Rad = toRad(Deg)
-        Rad = Deg * pi / 180.0;
-    end
 
     function Identity = identity
         Identity = [...
@@ -24,12 +21,12 @@ function plotObjectTransformed(Object, TransformationStack)
                     ; 0, 0, 0, 1 ...
                 ];
             case 'rotation'
-                CosX = cos(toRad(Transform.Rx));
-                SinX = sin(toRad(Transform.Rx));
-                CosY = cos(toRad(Transform.Ry));
-                SinY = sin(toRad(Transform.Ry));
-                CosZ = cos(toRad(Transform.Rz));
-                SinZ = sin(toRad(Transform.Rz));
+                CosX = cosd(Transform.Rx);
+                SinX = sind(Transform.Rx);
+                CosY = cosd(Transform.Ry);
+                SinY = sind(Transform.Ry);
+                CosZ = cosd(Transform.Rz);
+                SinZ = sind(Transform.Rz);
                 Rx = [...
                     1, 0, 0 ...
                   ; 0, CosX, -SinX ...
@@ -46,7 +43,7 @@ function plotObjectTransformed(Object, TransformationStack)
                   ; SinZ, CosZ, 0 ...
                   ; 0, 0, 1 ...
                 ];
-                Matrix = (Rx * Ry * Rz);
+                Matrix = (Rz * Ry * Rx);
                 Matrix = [ Matrix, zeros(3, 1); 0, 0, 0, 1 ];
 			case 'scaling'
                 Matrix = [...
@@ -145,6 +142,7 @@ function plotObjectTransformed(Object, TransformationStack)
                 ];
         end
     end
+
     switch(Object.Type)
         case 'Line'
             NumPairs = floor(length(Object.Indices) / 2);
@@ -154,7 +152,7 @@ function plotObjectTransformed(Object, TransformationStack)
                 Vectors = [ Object.Vertices(:, Indices); ones(1, length(Indices)) ];
                 Matrix = identity;
                 for J = 1:length(TransformationStack)
-                    Matrix = Matrix * getTransform(TransformationStack{J});
+                    Matrix = getTransform(TransformationStack{J}) * Matrix;
                 end
                 Vectors = Matrix * Vectors;
                 Vectors = Vectors(1:3, :);
@@ -167,7 +165,7 @@ function plotObjectTransformed(Object, TransformationStack)
                 Vectors = [ Object.Vertices(:, Indices); ones(1, length(Indices)) ];
                 Matrix = identity;
                 for J = 1:length(TransformationStack)
-                    Matrix = Matrix * getTransform(TransformationStack{J});
+                    Matrix = getTransform(TransformationStack{J}) * Matrix;
                 end
                 Vectors = Matrix * Vectors;
                 Vectors = Vectors(1:3, :);
